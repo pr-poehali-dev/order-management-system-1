@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -220,11 +221,22 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
                         </div>
                         <div>
                           <Label>Материал</Label>
-                          <Input
-                            value={newOrder.material}
-                            onChange={(e) => setNewOrder({ ...newOrder, material: e.target.value })}
-                            placeholder="Название материала"
-                          />
+                          <Select value={newOrder.material} onValueChange={(value) => setNewOrder({ ...newOrder, material: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Выберите материал" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {materials.length === 0 ? (
+                                <SelectItem value="none" disabled>Материалы не добавлены</SelectItem>
+                              ) : (
+                                materials.map((m) => (
+                                  <SelectItem key={m.id} value={m.name}>
+                                    {m.name}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
