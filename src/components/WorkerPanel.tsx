@@ -184,7 +184,7 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="orders">
               <Icon name="ClipboardList" size={16} className="mr-2" />
               Заявки
@@ -192,6 +192,14 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
             <TabsTrigger value="inventory">
               <Icon name="Package" size={16} className="mr-2" />
               Остатки
+            </TabsTrigger>
+            <TabsTrigger value="defects">
+              <Icon name="AlertTriangle" size={16} className="mr-2" />
+              Брак
+            </TabsTrigger>
+            <TabsTrigger value="schedule">
+              <Icon name="Calendar" size={16} className="mr-2" />
+              График
             </TabsTrigger>
           </TabsList>
 
@@ -383,6 +391,36 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="defects" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Учет брака</CardTitle>
+                <CardDescription>Списание бракованных материалов и изделий</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Icon name="AlertTriangle" size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>Функция учета брака в разработке</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="schedule" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>График работы сотрудников</CardTitle>
+                <CardDescription>Расписание и рабочее время всех сотрудников</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Icon name="Calendar" size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>Функция графика работы в разработке</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

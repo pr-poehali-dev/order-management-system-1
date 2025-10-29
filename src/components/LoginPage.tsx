@@ -100,10 +100,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               )}
             </Button>
           </form>
-          <div className="mt-6 pt-6 border-t text-center text-sm text-muted-foreground">
-            <p>Администратор по умолчанию:</p>
-            <p className="font-mono">login: <span className="font-semibold">admin</span> / password: <span className="font-semibold">adminik</span></p>
-          </div>
         </CardContent>
       </Card>
     </div>
