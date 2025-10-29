@@ -17,6 +17,7 @@ const SECTIONS_API = 'https://functions.poehali.dev/3cc3d7a9-a873-4328-a15f-947f
 interface User {
   id: number;
   login: string;
+  password?: string;
   role: string;
   full_name: string;
 }
@@ -69,6 +70,9 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
     section_id: undefined as number | undefined
   });
 
+  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
   const [newSection, setNewSection] = useState({
     name: '',
     description: ''
@@ -82,7 +86,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch(USERS_API);
+      const response = await fetch(`${USERS_API}?include_passwords=true`);
       const data = await response.json();
       setUsers(data);
     } catch (error) {
@@ -177,6 +181,50 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
       toast.error('Ошибка добавления материала');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateMaterial = async () => {
+    if (!editingMaterial || !editingMaterial.name) {
+      toast.error('Укажите название материала');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(MATERIALS_API, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingMaterial)
+      });
+
+      if (response.ok) {
+        toast.success('Материал обновлён');
+        setEditDialogOpen(false);
+        setEditingMaterial(null);
+        loadMaterials();
+      }
+    } catch (error) {
+      toast.error('Ошибка обновления материала');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteMaterial = async (id: number) => {
+    if (!confirm('Удалить этот материал?')) return;
+
+    try {
+      const response = await fetch(`${MATERIALS_API}?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Материал удалён');
+        loadMaterials();
+      }
+    } catch (error) {
+      toast.error('Ошибка удаления материала');
     }
   };
 
@@ -342,6 +390,7 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                     <TableRow>
                       <TableHead>ФИО</TableHead>
                       <TableHead>Логин</TableHead>
+                      <TableHead>Пароль</TableHead>
                       <TableHead>Роль</TableHead>
                       <TableHead className="text-right">Действия</TableHead>
                     </TableRow>
@@ -351,6 +400,11 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                       <TableRow key={u.id}>
                         <TableCell className="font-medium">{u.full_name}</TableCell>
                         <TableCell>{u.login}</TableCell>
+                        <TableCell>
+                          <code className="px-2 py-1 bg-muted rounded text-sm font-mono">
+                            {u.password || '••••••'}
+                          </code>
+                        </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                             {getRoleName(u.role)}
@@ -569,12 +623,13 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                       <TableHead>Цвет</TableHead>
                       <TableHead>Тип</TableHead>
                       <TableHead className="text-right">Количество</TableHead>
+                      <TableHead className="text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {materials.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">
                           Материалы не добавлены
                         </TableCell>
                       </TableRow>
@@ -595,6 +650,25 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                             <TableCell>{m.color || '—'}</TableCell>
                             <TableCell>{m.material_type || '—'}</TableCell>
                             <TableCell className="text-right font-mono">{m.quantity}</TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingMaterial(m);
+                                  setEditDialogOpen(true);
+                                }}
+                              >
+                                <Icon name="Pencil" size={14} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => deleteMaterial(m.id)}
+                              >
+                                <Icon name="Trash2" size={14} />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         );
                       })
@@ -603,6 +677,94 @@ export default function AdminPanel({ user, onLogout }: AdminPanelProps) {
                 </Table>
               </CardContent>
             </Card>
+
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Редактирование материала</DialogTitle>
+                  <DialogDescription>Обновление характеристик материала</DialogDescription>
+                </DialogHeader>
+                {editingMaterial && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Название</Label>
+                      <Input
+                        value={editingMaterial.name}
+                        onChange={(e) => setEditingMaterial({ ...editingMaterial, name: e.target.value })}
+                        placeholder="Название материала"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Размер</Label>
+                        <Input
+                          value={editingMaterial.size}
+                          onChange={(e) => setEditingMaterial({ ...editingMaterial, size: e.target.value })}
+                          placeholder="Размер"
+                        />
+                      </div>
+                      <div>
+                        <Label>Цвет</Label>
+                        <Input
+                          value={editingMaterial.color}
+                          onChange={(e) => setEditingMaterial({ ...editingMaterial, color: e.target.value })}
+                          placeholder="Цвет"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Тип материала</Label>
+                        <Input
+                          value={editingMaterial.material_type}
+                          onChange={(e) => setEditingMaterial({ ...editingMaterial, material_type: e.target.value })}
+                          placeholder="Тип"
+                        />
+                      </div>
+                      <div>
+                        <Label>Количество</Label>
+                        <Input
+                          type="number"
+                          value={editingMaterial.quantity}
+                          onChange={(e) => setEditingMaterial({ ...editingMaterial, quantity: Number(e.target.value) })}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Раздел</Label>
+                      <Select 
+                        value={editingMaterial.section_id?.toString() || ''} 
+                        onValueChange={(value) => setEditingMaterial({ ...editingMaterial, section_id: value ? Number(value) : undefined })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите раздел (необязательно)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Без раздела</SelectItem>
+                          {sections.map((s) => (
+                            <SelectItem key={s.id} value={s.id.toString()}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>URL изображения</Label>
+                      <Input
+                        value={editingMaterial.image_url}
+                        onChange={(e) => setEditingMaterial({ ...editingMaterial, image_url: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <Button onClick={updateMaterial} className="w-full" disabled={loading}>
+                      {loading ? 'Сохранение...' : 'Сохранить'}
+                    </Button>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       </div>

@@ -32,18 +32,36 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         cur = conn.cursor()
         
         if method == 'GET':
-            cur.execute(
-                "SELECT id, login, role, full_name, created_at FROM users ORDER BY created_at DESC"
-            )
-            users = cur.fetchall()
+            query_params = event.get('queryStringParameters') or {}
+            include_passwords = query_params.get('include_passwords') == 'true'
             
-            result = [{
-                'id': u[0],
-                'login': u[1],
-                'role': u[2],
-                'full_name': u[3],
-                'created_at': u[4].isoformat() if u[4] else None
-            } for u in users]
+            if include_passwords:
+                cur.execute(
+                    "SELECT id, login, password, role, full_name, created_at FROM users ORDER BY created_at DESC"
+                )
+                users = cur.fetchall()
+                
+                result = [{
+                    'id': u[0],
+                    'login': u[1],
+                    'password': u[2],
+                    'role': u[3],
+                    'full_name': u[4],
+                    'created_at': u[5].isoformat() if u[5] else None
+                } for u in users]
+            else:
+                cur.execute(
+                    "SELECT id, login, role, full_name, created_at FROM users ORDER BY created_at DESC"
+                )
+                users = cur.fetchall()
+                
+                result = [{
+                    'id': u[0],
+                    'login': u[1],
+                    'role': u[2],
+                    'full_name': u[3],
+                    'created_at': u[4].isoformat() if u[4] else None
+                } for u in users]
             
             cur.close()
             conn.close()

@@ -152,6 +152,55 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
     return texts[status] || status;
   };
 
+  const printOrder = (order: Order) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const content = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Заявка ${order.order_number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; }
+          h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 12px; text-align: left; border: 1px solid #ddd; }
+          th { background-color: #f5f5f5; font-weight: bold; }
+          .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; }
+          .status-created { background-color: #fee; color: #c00; }
+          .status-in_progress { background-color: #ffc; color: #860; }
+          .status-completed { background-color: #efe; color: #060; }
+          .status-shipped { background-color: #eef; color: #06c; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>Производственная заявка № ${order.order_number}</h1>
+        <table>
+          <tr><th>Материал</th><td>${order.material}</td></tr>
+          <tr><th>Количество</th><td>${order.quantity} шт.</td></tr>
+          <tr><th>Размеры</th><td>${order.size || '—'}</td></tr>
+          <tr><th>Цвет</th><td>${order.color || '—'}</td></tr>
+          <tr><th>Выполнено</th><td>${order.completed_quantity} из ${order.quantity} шт.</td></tr>
+          <tr><th>Статус</th><td><span class="status status-${order.status}">${getStatusText(order.status)}</span></td></tr>
+          <tr><th>Дата создания</th><td>${new Date(order.created_at).toLocaleString('ru-RU')}</td></tr>
+        </table>
+        <script>
+          window.onload = () => {
+            window.print();
+            window.onafterprint = () => window.close();
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
+
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'all') return true;
     return order.status === activeTab;
@@ -321,12 +370,13 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
                       <TableHead>Размеры</TableHead>
                       <TableHead>Цвет</TableHead>
                       <TableHead className="text-right">Прогресс</TableHead>
+                      <TableHead className="text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredOrders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">
                           Заявки не найдены
                         </TableCell>
                       </TableRow>
@@ -344,6 +394,16 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
                           <TableCell>{order.color || '—'}</TableCell>
                           <TableCell className="text-right font-mono">
                             {order.completed_quantity} / {order.quantity}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => printOrder(order)}
+                            >
+                              <Icon name="Printer" size={14} className="mr-1" />
+                              Печать
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))

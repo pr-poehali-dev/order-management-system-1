@@ -17,7 +17,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, X-User-Id',
                 'Access-Control-Max-Age': '86400'
             },
@@ -93,20 +93,62 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif method == 'PUT':
             body_data = json.loads(event.get('body', '{}'))
             material_id = body_data.get('id')
-            quantity_change = body_data.get('quantity_change', 0)
-            updated_by = body_data.get('updated_by')
             
-            cur.execute(
-                "UPDATE materials SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
-                (quantity_change, material_id)
-            )
-            
-            cur.execute(
-                "INSERT INTO material_inventory (material_id, quantity_change, updated_by) VALUES (%s, %s, %s)",
-                (material_id, quantity_change, updated_by)
-            )
+            if 'quantity_change' in body_data:
+                quantity_change = body_data.get('quantity_change', 0)
+                updated_by = body_data.get('updated_by')
+                
+                cur.execute(
+                    "UPDATE materials SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                    (quantity_change, material_id)
+                )
+                
+                cur.execute(
+                    "INSERT INTO material_inventory (material_id, quantity_change, updated_by) VALUES (%s, %s, %s)",
+                    (material_id, quantity_change, updated_by)
+                )
+            else:
+                name = body_data.get('name')
+                size = body_data.get('size', '')
+                color = body_data.get('color', '')
+                quantity = body_data.get('quantity', 0)
+                material_type = body_data.get('material_type', '')
+                image_url = body_data.get('image_url', '')
+                section_id = body_data.get('section_id')
+                
+                cur.execute(
+                    "UPDATE materials SET name = %s, size = %s, color = %s, quantity = %s, material_type = %s, image_url = %s, section_id = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                    (name, size, color, quantity, material_type, image_url, section_id, material_id)
+                )
             
             conn.commit()
+            cur.close()
+            conn.close()
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'success': True}),
+                'isBase64Encoded': False
+            }
+        
+        elif method == 'DELETE':
+            query_params = event.get('queryStringParameters') or {}
+            material_id = query_params.get('id')
+            
+            if not material_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Material ID required'}),
+                    'isBase64Encoded': False
+                }
+            
+            cur.execute("DELETE FROM materials WHERE id = %s", (material_id,))
+            conn.commit()
+            
             cur.close()
             conn.close()
             return {
