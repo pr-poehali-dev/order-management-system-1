@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 
 const ORDERS_API = 'https://functions.poehali.dev/0ffd935b-d2ee-48e1-a9e4-2b8fe0ffb3dd';
 const MATERIALS_API = 'https://functions.poehali.dev/74905bf8-26b1-4b87-9a75-660316d4ba77';
+const SCHEDULE_API = 'https://functions.poehali.dev/f617714b-d72a-41e1-87ec-519f6dff2f28';
 
 interface User {
   id: number;
@@ -39,6 +40,21 @@ interface Material {
   quantity: number;
 }
 
+interface ScheduleRecord {
+  id: number;
+  user_id: number;
+  work_date: string;
+  hours: number;
+  full_name: string;
+  login: string;
+}
+
+interface ScheduleUser {
+  id: number;
+  full_name: string;
+  login: string;
+}
+
 interface WorkerPanelProps {
   user: User;
   onLogout: () => void;
@@ -51,13 +67,25 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
   const [completedAmount, setCompletedAmount] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [schedule, setSchedule] = useState<ScheduleRecord[]>([]);
+  const [scheduleUsers, setScheduleUsers] = useState<ScheduleUser[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<number>(0);
+  const [hours, setHours] = useState<number>(0);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   useEffect(() => {
     loadOrders();
     loadMaterials();
+    loadSchedule();
     const interval = setInterval(loadOrders, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    loadSchedule();
+  }, [currentMonth]);
 
   const loadOrders = async () => {
     try {
@@ -76,6 +104,47 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
       setMaterials(data);
     } catch (error) {
       toast.error('Ошибка загрузки материалов');
+    }
+  };
+
+  const loadSchedule = async () => {
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1;
+      const response = await fetch(`${SCHEDULE_API}?year=${year}&month=${month}`);
+      const data = await response.json();
+      setSchedule(data.schedule || []);
+      setScheduleUsers(data.users || []);
+    } catch (error) {
+      toast.error('Ошибка загрузки графика');
+    }
+  };
+
+  const saveSchedule = async () => {
+    if (!selectedDate || !selectedUserId || hours < 0) {
+      toast.error('Заполните все поля');
+      return;
+    }
+
+    try {
+      await fetch(SCHEDULE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: selectedUserId,
+          work_date: selectedDate,
+          hours: hours
+        })
+      });
+
+      toast.success('Часы внесены');
+      setScheduleDialogOpen(false);
+      setSelectedDate('');
+      setSelectedUserId(0);
+      setHours(0);
+      loadSchedule();
+    } catch (error) {
+      toast.error('Ошибка сохранения');
     }
   };
 
@@ -413,14 +482,140 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
           <TabsContent value="schedule" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>График работы сотрудников</CardTitle>
-                <CardDescription>Расписание и рабочее время всех сотрудников</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>График работы сотрудников</CardTitle>
+                    <CardDescription>
+                      {currentMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                    >
+                      <Icon name="ChevronLeft" size={16} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMonth(new Date())}
+                    >
+                      Сегодня
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                    >
+                      <Icon name="ChevronRight" size={16} />
+                    </Button>
+                    <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm">
+                          <Icon name="Plus" size={16} className="mr-2" />
+                          Внести часы
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Внести рабочие часы</DialogTitle>
+                          <DialogDescription>Укажите сотрудника, дату и количество часов</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Сотрудник</Label>
+                            <select
+                              className="w-full border rounded-md p-2"
+                              value={selectedUserId}
+                              onChange={(e) => setSelectedUserId(Number(e.target.value))}
+                            >
+                              <option value={0}>Выберите сотрудника</option>
+                              {scheduleUsers.map(u => (
+                                <option key={u.id} value={u.id}>{u.full_name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label>Дата</Label>
+                            <Input
+                              type="date"
+                              value={selectedDate}
+                              onChange={(e) => setSelectedDate(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label>Количество часов</Label>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              max="24"
+                              value={hours}
+                              onChange={(e) => setHours(Number(e.target.value))}
+                              placeholder="8"
+                            />
+                          </div>
+                          <Button onClick={saveSchedule} className="w-full">
+                            Сохранить
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Icon name="Calendar" size={48} className="mx-auto mb-4 opacity-50" />
-                  <p>Функция графика работы в разработке</p>
-                </div>
+                {scheduleUsers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Нет сотрудников для отображения</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {scheduleUsers.map(user => {
+                      const userRecords = schedule.filter(s => s.user_id === user.id);
+                      const totalHours = userRecords.reduce((sum, r) => sum + r.hours, 0);
+                      
+                      return (
+                        <div key={user.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h3 className="font-semibold text-lg">{user.full_name}</h3>
+                              <p className="text-sm text-muted-foreground">@{user.login}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-primary">{totalHours.toFixed(1)} ч</div>
+                              <div className="text-xs text-muted-foreground">Всего за месяц</div>
+                            </div>
+                          </div>
+                          
+                          {userRecords.length > 0 && (
+                            <div className="grid grid-cols-7 gap-1 mt-3">
+                              {userRecords.sort((a, b) => new Date(a.work_date).getTime() - new Date(b.work_date).getTime()).map(record => {
+                                const date = new Date(record.work_date);
+                                return (
+                                  <div
+                                    key={record.id}
+                                    className="border rounded p-2 text-center hover:bg-accent cursor-pointer"
+                                    title={`${date.toLocaleDateString('ru-RU')}: ${record.hours} ч`}
+                                  >
+                                    <div className="text-xs text-muted-foreground">
+                                      {date.getDate()}
+                                    </div>
+                                    <div className="text-sm font-semibold">
+                                      {record.hours}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
