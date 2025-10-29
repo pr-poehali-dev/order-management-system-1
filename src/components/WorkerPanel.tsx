@@ -175,6 +175,23 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
     }
   };
 
+  const deleteOrder = async (orderId: number) => {
+    if (!confirm('Удалить эту заявку?')) return;
+
+    try {
+      const response = await fetch(`${ORDERS_API}?id=${orderId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Заявка удалена');
+        loadOrders();
+      }
+    } catch (error) {
+      toast.error('Ошибка удаления заявки');
+    }
+  };
+
   const updateInventory = async (materialId: number, change: number) => {
     try {
       await fetch(MATERIALS_API, {
@@ -256,6 +273,7 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
             setActiveTab={setActiveTab}
             onUpdateProgress={updateOrderProgress}
             onMarkAsShipped={markAsShipped}
+            onDeleteOrder={deleteOrder}
             getStatusColor={getStatusColor}
             getStatusText={getStatusText}
           />

@@ -28,6 +28,7 @@ interface OrdersTabProps {
   setActiveTab: (tab: string) => void;
   onUpdateProgress: (order: Order, amount: number) => void;
   onMarkAsShipped: (orderId: number) => void;
+  onDeleteOrder: (orderId: number) => void;
   getStatusColor: (status: string) => string;
   getStatusText: (status: string) => string;
 }
@@ -38,6 +39,7 @@ export default function OrdersTab({
   setActiveTab,
   onUpdateProgress,
   onMarkAsShipped,
+  onDeleteOrder,
   getStatusColor,
   getStatusText
 }: OrdersTabProps) {
@@ -152,7 +154,7 @@ export default function OrdersTab({
                         {getStatusText(order.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
                       {order.status !== 'shipped' && order.completed_quantity < order.quantity ? (
                         <Dialog open={dialogOpen && selectedOrder?.id === order.id} onOpenChange={(open) => {
                           setDialogOpen(open);
@@ -217,6 +219,13 @@ export default function OrdersTab({
                           Отправить
                         </Button>
                       ) : null}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => onDeleteOrder(order.id)}
+                      >
+                        <Icon name="Trash2" size={14} />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

@@ -118,6 +118,23 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
     audio.play().catch(() => {});
   };
 
+  const deleteOrder = async (orderId: number) => {
+    if (!confirm('Удалить эту заявку?')) return;
+
+    try {
+      const response = await fetch(`${ORDERS_API}?id=${orderId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Заявка удалена');
+        loadOrders();
+      }
+    } catch (error) {
+      toast.error('Ошибка удаления заявки');
+    }
+  };
+
   const updateInventory = async (materialId: number, change: number) => {
     try {
       await fetch(MATERIALS_API, {
@@ -395,7 +412,7 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
                           <TableCell className="text-right font-mono">
                             {order.completed_quantity} / {order.quantity}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right space-x-2">
                             <Button
                               size="sm"
                               variant="outline"
@@ -403,6 +420,13 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
                             >
                               <Icon name="Printer" size={14} className="mr-1" />
                               Печать
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteOrder(order.id)}
+                            >
+                              <Icon name="Trash2" size={14} />
                             </Button>
                           </TableCell>
                         </TableRow>
