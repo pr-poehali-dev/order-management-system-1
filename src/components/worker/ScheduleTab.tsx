@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import Icon from '@/components/ui/icon';
 
 interface ScheduleRecord {
@@ -28,6 +29,8 @@ interface ScheduleTabProps {
   currentMonth: Date;
   setCurrentMonth: (date: Date) => void;
   onSaveSchedule: (userId: number, date: string, hours: number) => void;
+  onUpdateSchedule: (scheduleId: number, hours: number) => void;
+  onPrintSchedule: () => void;
 }
 
 export default function ScheduleTab({
@@ -35,12 +38,16 @@ export default function ScheduleTab({
   scheduleUsers,
   currentMonth,
   setCurrentMonth,
-  onSaveSchedule
+  onSaveSchedule,
+  onUpdateSchedule,
+  onPrintSchedule
 }: ScheduleTabProps) {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<number>(0);
   const [hours, setHours] = useState<number>(0);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
+  const [editingHours, setEditingHours] = useState<number>(0);
 
   const handleSaveSchedule = () => {
     onSaveSchedule(selectedUserId, selectedDate, hours);
@@ -48,6 +55,20 @@ export default function ScheduleTab({
     setSelectedDate('');
     setSelectedUserId(0);
     setHours(0);
+  };
+
+  const handleEditHours = (record: ScheduleRecord) => {
+    setEditingRecordId(record.id);
+    setEditingHours(record.hours);
+  };
+
+  const handleSaveEdit = (recordId: number) => {
+    if (editingHours < 0 || editingHours > 24) {
+      toast.error('Часы должны быть от 0 до 24');
+      return;
+    }
+    onUpdateSchedule(recordId, editingHours);
+    setEditingRecordId(null);
   };
 
   return (
@@ -82,6 +103,14 @@ export default function ScheduleTab({
                 onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
               >
                 <Icon name="ChevronRight" size={16} />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPrintSchedule}
+              >
+                <Icon name="Printer" size={16} className="mr-1" />
+                Печать
               </Button>
               <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
                 <DialogTrigger asChild>
@@ -163,21 +192,44 @@ export default function ScheduleTab({
                     </div>
                     
                     {userRecords.length > 0 && (
-                      <div className="grid grid-cols-7 gap-1 mt-3">
+                      <div className="flex flex-wrap gap-2 mt-3">
                         {userRecords.sort((a, b) => new Date(a.work_date).getTime() - new Date(b.work_date).getTime()).map(record => {
                           const date = new Date(record.work_date);
+                          const isEditing = editingRecordId === record.id;
                           return (
                             <div
                               key={record.id}
-                              className="border rounded p-2 text-center hover:bg-accent cursor-pointer"
-                              title={`${date.toLocaleDateString('ru-RU')}: ${record.hours} ч`}
+                              className="border rounded px-3 py-2 text-center hover:bg-accent"
                             >
-                              <div className="text-xs text-muted-foreground">
-                                {date.getDate()}
+                              <div className="text-xs text-muted-foreground whitespace-nowrap">
+                                {date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                               </div>
-                              <div className="text-sm font-semibold">
-                                {record.hours}
-                              </div>
+                              {isEditing ? (
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Input
+                                    type="number"
+                                    step="0.5"
+                                    min="0"
+                                    max="24"
+                                    value={editingHours}
+                                    onChange={(e) => setEditingHours(Number(e.target.value))}
+                                    className="w-16 h-6 text-xs"
+                                  />
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleSaveEdit(record.id)}>
+                                    <Icon name="Check" size={12} />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditingRecordId(null)}>
+                                    <Icon name="X" size={12} />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 mt-1">
+                                  <div className="text-sm font-semibold">{record.hours} ч</div>
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleEditHours(record)}>
+                                    <Icon name="Pencil" size={12} />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

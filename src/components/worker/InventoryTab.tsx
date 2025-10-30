@@ -13,15 +13,25 @@ interface Material {
 interface InventoryTabProps {
   materials: Material[];
   onUpdateInventory: (materialId: number, change: number) => void;
+  onDeleteMaterial: (materialId: number) => void;
+  onPrintInventory: () => void;
 }
 
-export default function InventoryTab({ materials, onUpdateInventory }: InventoryTabProps) {
+export default function InventoryTab({ materials, onUpdateInventory, onDeleteMaterial, onPrintInventory }: InventoryTabProps) {
   return (
     <TabsContent value="inventory" className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Остатки материалов</CardTitle>
-          <CardDescription>Учет складских остатков</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Остатки материалов</CardTitle>
+              <CardDescription>Учет складских остатков</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={onPrintInventory}>
+              <Icon name="Printer" size={16} className="mr-1" />
+              Печать
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -57,6 +67,13 @@ export default function InventoryTab({ materials, onUpdateInventory }: Inventory
                       }}
                     >
                       <Icon name="Minus" size={14} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => onDeleteMaterial(m.id)}
+                    >
+                      <Icon name="Trash2" size={14} />
                     </Button>
                   </TableCell>
                 </TableRow>

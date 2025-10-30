@@ -149,6 +149,63 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
     }
   };
 
+  const deleteMaterial = async (materialId: number) => {
+    if (!confirm('Удалить этот материал?')) return;
+
+    try {
+      const response = await fetch(`${MATERIALS_API}?id=${materialId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Материал удалён');
+        loadMaterials();
+      }
+    } catch (error) {
+      toast.error('Ошибка удаления материала');
+    }
+  };
+
+  const handlePrintInventory = () => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Остатки материалов</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #000; padding: 12px; text-align: left; }
+            th { background-color: #f0f0f0; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>Остатки материалов</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>Материал</th>
+                <th>Количество</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${materials.map(m => `
+                <tr>
+                  <td>${m.name}</td>
+                  <td>${m.quantity}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    const win = window.open('', '', 'height=800,width=800');
+    win?.document.write(printContent);
+    win?.document.close();
+    win?.print();
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       created: 'bg-red-500',
@@ -441,8 +498,16 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
           <TabsContent value="inventory" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Остатки материалов</CardTitle>
-                <CardDescription>Учет складских остатков</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Остатки материалов</CardTitle>
+                    <CardDescription>Учет складских остатков</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handlePrintInventory}>
+                    <Icon name="Printer" size={16} className="mr-1" />
+                    Печать
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -478,6 +543,13 @@ export default function ManagerPanel({ user, onLogout }: ManagerPanelProps) {
                             }}
                           >
                             <Icon name="Minus" size={14} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteMaterial(m.id)}
+                          >
+                            <Icon name="Trash2" size={14} />
                           </Button>
                         </TableCell>
                       </TableRow>

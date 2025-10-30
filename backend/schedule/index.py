@@ -67,7 +67,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             cur.execute("""
                 SELECT id, full_name, login 
                 FROM t_p435659_order_management_sys.users 
-                WHERE role IN ('worker', 'manager')
+                WHERE role = 'worker'
                 ORDER BY full_name
             """)
             users = cur.fetchall()

@@ -134,6 +134,62 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
     }
   };
 
+  const handleUpdateSchedule = async (scheduleId: number, hours: number) => {
+    try {
+      await fetch(SCHEDULE_API, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: scheduleId, hours })
+      });
+      toast.success('Часы обновлены');
+      loadSchedule();
+    } catch (error) {
+      toast.error('Ошибка обновления');
+    }
+  };
+
+  const handlePrintSchedule = () => {
+    const printContent = document.createElement('div');
+    printContent.innerHTML = `
+      <html>
+        <head>
+          <title>График работы</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+            th { background-color: #f0f0f0; }
+            .total { font-weight: bold; text-align: right; }
+          </style>
+        </head>
+        <body>
+          <h1>График работы сотрудников - ${currentMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}</h1>
+          ${scheduleUsers.map(user => {
+            const userRecords = schedule.filter(s => s.user_id === user.id);
+            const totalHours = userRecords.reduce((sum, r) => sum + r.hours, 0);
+            return `
+              <table>
+                <tr><th colspan="2">${user.full_name} (@${user.login})</th></tr>
+                ${userRecords.sort((a, b) => new Date(a.work_date).getTime() - new Date(b.work_date).getTime()).map(record => `
+                  <tr>
+                    <td>${new Date(record.work_date).toLocaleDateString('ru-RU')}</td>
+                    <td>${record.hours} ч</td>
+                  </tr>
+                `).join('')}
+                <tr class="total"><td>Итого:</td><td>${totalHours.toFixed(1)} ч</td></tr>
+              </table>
+            `;
+          }).join('')}
+        </body>
+      </html>
+    `;
+    const win = window.open('', '', 'height=800,width=800');
+    win?.document.write(printContent.innerHTML);
+    win?.document.close();
+    win?.print();
+  };
+
   const updateOrderProgress = async (order: Order, completedAmount: number) => {
     if (completedAmount <= 0) {
       toast.error('Укажите корректное количество');
@@ -192,6 +248,23 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
     }
   };
 
+  const deleteMaterial = async (materialId: number) => {
+    if (!confirm('Удалить этот материал?')) return;
+
+    try {
+      const response = await fetch(`${MATERIALS_API}?id=${materialId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Материал удалён');
+        loadMaterials();
+      }
+    } catch (error) {
+      toast.error('Ошибка удаления материала');
+    }
+  };
+
   const updateInventory = async (materialId: number, change: number) => {
     try {
       await fetch(MATERIALS_API, {
@@ -204,6 +277,46 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
     } catch (error) {
       toast.error('Ошибка обновления остатков');
     }
+  };
+
+  const handlePrintInventory = () => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Остатки материалов</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #000; padding: 12px; text-align: left; }
+            th { background-color: #f0f0f0; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>Остатки материалов</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>Материал</th>
+                <th>Количество</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${materials.map(m => `
+                <tr>
+                  <td>${m.name}</td>
+                  <td>${m.quantity}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    const win = window.open('', '', 'height=800,width=800');
+    win?.document.write(printContent);
+    win?.document.close();
+    win?.print();
   };
 
   const getStatusColor = (status: string) => {
@@ -281,6 +394,8 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
           <InventoryTab
             materials={materials}
             onUpdateInventory={updateInventory}
+            onDeleteMaterial={deleteMaterial}
+            onPrintInventory={handlePrintInventory}
           />
 
           <DefectsTab />
@@ -291,6 +406,8 @@ export default function WorkerPanel({ user, onLogout }: WorkerPanelProps) {
             currentMonth={currentMonth}
             setCurrentMonth={setCurrentMonth}
             onSaveSchedule={handleSaveSchedule}
+            onUpdateSchedule={handleUpdateSchedule}
+            onPrintSchedule={handlePrintSchedule}
           />
         </Tabs>
       </div>
